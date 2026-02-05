@@ -4,7 +4,7 @@ dotenv.config();
 const config = {
   apiKey: `${process.env.MISTRAL_API_KEY}`,
   aiService: 'ollama',
-  aiVersion: `mistral:instruct`,
+  aiVersion: `gpt-oss:20b`,
   filePaths: [
     'resources/reference.txt'  
   ],

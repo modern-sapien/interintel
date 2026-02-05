@@ -20,35 +20,38 @@ const openai = new OpenAI({
   model: config.aiVersion,
 });
 
-async function chatCompletion(aiService, messages, model) {
+async function chatCompletion(aiService, messages, model, tools = null) {
   try {
     let response;
 
     if (aiService === 'openai') {
-      response = await openai.chat.completions.create({
+      const params = {
         messages: messages,
         model: model,
         stream: false,
-      });
+      };
+      if (tools) params.tools = tools;
 
+      response = await openai.chat.completions.create(params);
       return response;
-      
+
     } else if (aiService === 'mistral') {
       let chatResponse;
 
       chatResponse = await mistralClient.chat({
-        model: model, // or a specific model you wish to use
+        model: model,
         messages: messages,
       });
 
       return chatResponse;
     } else if (aiService === 'ollama') {
-      // Ollama specific code
       let data = {
         messages,
         model,
         stream: false,
       };
+      if (tools) data.tools = tools;
+
       const fetchResponse = await fetch('http://localhost:11434/api/chat', {
         method: 'POST',
         headers: {
@@ -57,8 +60,13 @@ async function chatCompletion(aiService, messages, model) {
         body: JSON.stringify(data),
       });
 
-      // Properly resolve the response
       response = await fetchResponse.json();
+
+      // Return full response when tools are enabled (for tool call detection)
+      // Otherwise return just content for backward compatibility
+      if (tools) {
+        return response;
+      }
       return response.message.content;
     } else {
       throw new Error('Invalid AI service');

@@ -1,0 +1,9 @@
+{
+  "read": true,
+  "search": true,
+  "edit": false,
+  "write": false,
+  "execute": false,
+  "allowedPaths": [],
+  "allowedCommands": []
+}
