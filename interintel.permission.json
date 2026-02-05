@@ -3,7 +3,7 @@
   "search": true,
   "edit": false,
   "write": false,
-  "execute": true,
+  "execute": false,
   "allowedPaths": [],
   "allowedCommands": []
 }

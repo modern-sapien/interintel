@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const PERMISSIONS_FILE = path.join(process.cwd(), 'interintel.permissions.json');
+let PERMISSIONS_FILE = path.join(process.cwd(), 'interintel.permission.json');
 
 // Clear permission states - always visible in config
 const defaultPermissions = {
@@ -23,19 +23,23 @@ export function setReadlineInterface(readline) {
 }
 
 export function loadPermissions() {
-  try {
-    if (fs.existsSync(PERMISSIONS_FILE)) {
+  if (fs.existsSync(PERMISSIONS_FILE)) {
       const data = fs.readFileSync(PERMISSIONS_FILE, 'utf-8');
       permissions = { ...defaultPermissions, ...JSON.parse(data) };
     } else {
-      permissions = { ...defaultPermissions };
-      // Create file with defaults so it's always visible
-      savePermissions();
+      // try src folder
+      const srcPath = path.join(process.cwd(), 'src', 'interintel.permission.json');
+      if (fs.existsSync(srcPath)) {
+        const data = fs.readFileSync(srcPath, 'utf-8');
+        permissions = { ...defaultPermissions, ...JSON.parse(data) };
+        // Update PERMISSIONS_FILE to new location
+        PERMISSIONS_FILE = srcPath;
+      } else {
+        permissions = { ...defaultPermissions };
+        // Create file with defaults so it's always visible
+        savePermissions();
+      }
     }
-  } catch (error) {
-    console.error('Error loading permissions:', error.message);
-    permissions = { ...defaultPermissions };
-  }
   sessionPermissions = { paths: [], commands: [] };
   return permissions;
 }

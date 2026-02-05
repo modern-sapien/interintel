@@ -1,15 +1,12 @@
 .DS_Store
 interintel/session-samples
 resources/multi-step
+.claude
+.interintel
 
-# Generated files (from AI tool use)
-summary.txt
-dotenv-imports.txt
-test.txt
-resources/test.txt
+FOR_REVIEW.md
+INSTRUCTIONS.md
 
-# User config (created by setup, should be customized)
-interintel.permissions.json
 # Logs
 logs
 *.log
