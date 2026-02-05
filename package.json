@@ -1,35 +1,49 @@
 {
+  "name": "interintel",
+  "version": "1.0.23",
+  "description": "CLI for local AI-assisted development with OpenAI, Mistral, and Ollama. Chat with AI to read, search, edit files and run commands.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "interintel": "./index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "index.js",
+    "setup.js",
+    "src/",
+    "templates/"
+  ],
   "dependencies": {
     "@mistralai/mistralai": "^0.0.8",
     "colors": "^1.4.0",
     "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2",
     "openai": "^4.24.0"
   },
-  "name": "interintel",
-  "description": "The application `Interintel` is a command line interface (CLI) application implemented in Node.js. It essentially is an interactive communication tool between the user and an AI model, only openai models for now.",
-  "version": "1.0.22",
-  "type": "module",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
-    "postinstall": "echo 'Running postinstall script...' && node setup.js",
-    "test": ""
+    "postinstall": "node setup.js",
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/modern-sapien/inter-intel.git"
   },
   "keywords": [
-    "testing",
-    "development",
     "ai",
-    "debugging",
-    "copilot"
+    "cli",
+    "local-ai",
+    "ollama",
+    "openai",
+    "mistral",
+    "development",
+    "copilot",
+    "assistant"
   ],
   "author": "Modern-Sapien",
-  "license": "SEE LICENSE IN README.md",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/modern-sapien/inter-intel/issues"
   },
