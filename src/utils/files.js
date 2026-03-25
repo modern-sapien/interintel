@@ -4,6 +4,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 /**
  * Read reference files specified in config
@@ -11,7 +12,7 @@ import path from 'path';
 export async function readSpecificFiles(configFilePath) {
   try {
     const absoluteConfigPath = path.resolve(configFilePath);
-    const configModule = await import('file://' + absoluteConfigPath);
+    const configModule = await import(pathToFileURL(absoluteConfigPath));
     const config = configModule.default;
 
     const filePaths = config.filePaths || [];

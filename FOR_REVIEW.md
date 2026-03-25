@@ -1,120 +1,54 @@
-# NPM Package Readiness Review
+# Interintel - Issue Tracker
 
-## Status: NOT READY FOR PUBLISHING
+## Status: Issues found during install/runtime testing (v1.0.23)
 
----
-
-## Critical Blockers (Must fix)
-
-### 1. No `bin` field - can't run as CLI command
-```json
-// Add to package.json:
-"bin": {
-  "interintel": "./index.js"
-}
-```
-
-### 2. Missing shebang in index.js
-```javascript
-// Add as first line of index.js:
-#!/usr/bin/env node
-```
-
-### 3. `node-fetch` not in dependencies
-Used in serviceInterface.js but not listed in package.json.
-
-### 4. Hardcoded paths break when installed as dependency
-| File | Issue |
-|------|-------|
-| `setup.js` | Uses `../../interintel.config.js` - wrong for node_modules |
-| `index.js` | `process.cwd()` assumes user is in project root |
-| `serviceInterface.js` | Same cwd assumption |
-| `tools/permissions.js` | Same cwd assumption |
-
-### 5. Config template uses `require()` in ES module package
-`resources/interintel.config.template.js` uses CommonJS but package is ES modules.
+Tested by installing from `npm pack` tarball into a clean project directory on Windows + Node v22.
 
 ---
 
-## High Priority (Should fix)
+## P0 — Blocks installation or startup
 
-### 1. Add `.npmignore`
-```
-.claude/
-.git/
-.gitignore
-FOR_REVIEW.md
-INSTRUCTIONS.md
-testIntel.js
-mistral.js
-resources/training/
-resources/multi-step/
-node_modules/
-*.tgz
-.DS_Store
-```
+### 1. `setup.js` postinstall imports `colors` before deps are installed
+- `setup.js` line 5 does `import colors from 'colors'`, but `postinstall` can run before the package's own dependencies are resolved (local path installs, some npm versions).
+- **Result**: `ERR_MODULE_NOT_FOUND: Cannot find package 'colors'` — install fails.
+- **Fix**: Remove `colors` from `setup.js`. Use plain `console.log()`.
 
-### 2. Update package.json
-```json
-{
-  "description": "CLI for local AI-assisted development with OpenAI, Mistral, and Ollama",
-  "license": "Apache-2.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "files": [
-    "index.js",
-    "serviceInterface.js",
-    "functions/",
-    "tools/",
-    "resources/interintel.config.template.js",
-    "resources/reference.txt"
-  ]
-}
-```
+### 2. `setup.js` creates config in wrong directory
+- `process.cwd()` during `postinstall` points to the package's own directory inside `node_modules/interintel/`, NOT the user's project root.
+- The config file `interintel.config.js` is also shipped inside the package (not excluded by `.npmignore`), so `fs.existsSync()` returns `true` and setup skips creation entirely.
+- **Result**: User never gets `interintel.config.js` in their project root.
+- **Fix**: Use `process.env.INIT_CWD` (set by npm to the actual install directory). Add `interintel.config.js` and `interintel.permission.json` to `.npmignore`.
 
-### 3. Update README.md
-Current README is outdated:
-- Only mentions OpenAI (missing Mistral, Ollama)
-- No installation instructions
-- No API key setup
-- No mention of tools (read_file, write_file, etc.)
-- No permissions system documentation
-- File structure doesn't include /tools directory
+### 3. Windows crash: dynamic `import()` needs `file://` URLs
+- `providers.js:22` does `await import(configPath)` with a bare Windows path like `C:\Users\...`. ESM `import()` requires `file://` URLs on Windows.
+- `src/utils/files.js:14` manually prepends `file://` but doesn't URL-encode (breaks on paths with spaces or special chars).
+- **Result**: `ERR_UNSUPPORTED_ESM_URL_SCHEME` — CLI crashes on startup on Windows.
+- **Fix**: Use `pathToFileURL()` from `node:url` everywhere.
+
+### 4. `.npmignore` ships runtime config files in the package
+- `interintel.config.js`, `interintel.permission.json`, and `package-lock.json` are not excluded. They ship inside the npm package and interfere with setup logic.
+- **Fix**: Add them to `.npmignore`.
 
 ---
 
-## Medium Priority
+## P1 — Core functionality broken
 
-| Item | Status |
-|------|--------|
-| CONTRIBUTING.md | Missing |
-| CHANGELOG.md | Missing |
-| Real tests | testIntel.js is just a stub |
-| Dead code | mistral.js appears unused |
+### 5. OpenAI and Mistral tool calls are never processed
+- `cli.js` lines 145–153: when `aiService` is `openai` or `mistral`, the code extracts `completion.choices[0].message.content` and moves on. It never checks for `tool_calls`.
+- `processAIResponse()` only handles Ollama's response shape (`response.message.tool_calls`). OpenAI returns `response.choices[0].message.tool_calls`.
+- **Result**: All 6 tools (read, write, edit, search, list, execute) only work with Ollama. OpenAI/Mistral users get text-only responses.
+- **Fix**: Route all providers through a unified tool-call handler that normalizes response shapes.
 
----
-
-## Files to Clean Up
-
-| File | Action |
-|------|--------|
-| `testIntel.js` | Remove or make real test |
-| `mistral.js` | Remove or document purpose |
-| `summary.txt` | Add to .gitignore (generated) |
-| `dotenv-imports.txt` | Add to .gitignore (generated) |
-| `test.txt` | Add to .gitignore (generated) |
-| `interintel.permissions.json` | Add to .gitignore (user config) |
+### 6. `chatCompletion` returns `null` on error, causing crashes
+- `providers.js:88` catches errors and returns `null`. `cli.js` doesn't check for `null` before accessing `.choices[0]` or `.message`.
+- **Result**: Unhandled `TypeError` crashes the CLI on any API error (bad key, network issue, etc.).
+- **Fix**: Check for `null`/error returns in `cli.js` before processing.
 
 ---
 
-## Recommended Fix Order
+## P2 — Cleanup and modernization
 
-1. **package.json** - bin, description, license, engines, files, add node-fetch
-2. **index.js** - add shebang
-3. **.npmignore** - create
-4. **.gitignore** - update with generated files
-5. **setup.js** - fix paths for npm install
-6. **README.md** - full rewrite with current features
-7. **Config template** - convert to ES modules
-8. **Clean up** - remove test files, dead code
+### 7. `node-fetch` is unnecessary
+- Package requires Node `>=18.0.0` which has native `fetch()`. The `node-fetch@^3` dependency adds `node-fetch`, `data-uri-to-buffer`, `node-domexception`, and `fetch-blob` for no reason.
+- **Fix**: Use global `fetch()`, remove `node-fetch` from dependencies.
+

@@ -9,6 +9,11 @@ INSTRUCTIONS.md
 testIntel.js
 mistral.js
 
+# Runtime config (must not ship — setup.js creates these in user's project)
+interintel.config.js
+interintel.permission.json
+package-lock.json
+
 # Generated files
 summary.txt
 dotenv-imports.txt

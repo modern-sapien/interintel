@@ -9,7 +9,7 @@ const config = {
   // Model name - examples:
   //   ollama: 'llama3.1:8b', 'mixtral:latest', 'gpt-oss:20b'
   //   openai: 'gpt-4', 'gpt-3.5-turbo'
-  //   mistral: 'mistral-tiny', 'mistral-small'
+  //   mistral: 'mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'
   aiVersion: 'llama3.1:8b',
   // Reference files to load into context
   filePaths: [],

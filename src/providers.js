@@ -1,16 +1,15 @@
 /**
  * AI Provider Interface
  * Supports: Ollama (local), OpenAI, Mistral
+ * Mistral uses the OpenAI SDK pointed at Mistral's API (OpenAI-compatible).
  */
 
 import path from 'path';
-import fetch from 'node-fetch';
+import { pathToFileURL } from 'url';
 import OpenAI from 'openai';
-import MistralClient from '@mistralai/mistralai';
 
 let config = null;
-let openaiClient = null;
-let mistralClient = null;
+let apiClient = null;
 
 /**
  * Initialize providers with config
@@ -19,7 +18,7 @@ export async function initProviders() {
   const configPath = path.join(process.cwd(), 'interintel.config.js');
 
   try {
-    const importedModule = await import(configPath);
+    const importedModule = await import(pathToFileURL(configPath));
     config = importedModule.default;
   } catch (error) {
     console.error('Failed to load interintel.config.js:', error.message);
@@ -27,12 +26,14 @@ export async function initProviders() {
     process.exit(1);
   }
 
-  // Initialize clients lazily based on service
   if (config.aiService === 'openai' && config.apiKey) {
-    openaiClient = new OpenAI({ apiKey: config.apiKey });
+    apiClient = new OpenAI({ apiKey: config.apiKey });
   }
   if (config.aiService === 'mistral' && config.apiKey) {
-    mistralClient = new MistralClient(config.apiKey);
+    apiClient = new OpenAI({
+      apiKey: config.apiKey,
+      baseURL: 'https://api.mistral.ai/v1',
+    });
   }
 
   return config;
@@ -50,20 +51,13 @@ export function getConfig() {
  */
 export async function chatCompletion(aiService, messages, model, tools = null) {
   try {
-    if (aiService === 'openai') {
-      if (!openaiClient) {
-        throw new Error('OpenAI client not initialized. Check API key.');
+    if (aiService === 'openai' || aiService === 'mistral') {
+      if (!apiClient) {
+        throw new Error(`${aiService} client not initialized. Check API key.`);
       }
       const params = { messages, model, stream: false };
       if (tools) params.tools = tools;
-      return await openaiClient.chat.completions.create(params);
-    }
-
-    if (aiService === 'mistral') {
-      if (!mistralClient) {
-        throw new Error('Mistral client not initialized. Check API key.');
-      }
-      return await mistralClient.chat({ model, messages });
+      return await apiClient.chat.completions.create(params);
     }
 
     if (aiService === 'ollama') {

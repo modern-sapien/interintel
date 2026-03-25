@@ -37,44 +37,89 @@ async function executeTool(toolName, args) {
   return await executor(args);
 }
 
-async function processAIResponse(response, messages, config) {
-  if (response.message?.tool_calls && response.message.tool_calls.length > 0) {
-    messages.push(response.message);
-
-    for (const toolCall of response.message.tool_calls) {
-      const toolName = toolCall.function.name;
-      const args = typeof toolCall.function.arguments === 'string'
-        ? JSON.parse(toolCall.function.arguments)
-        : toolCall.function.arguments;
-
-      console.log(`[Tool: ${toolName}]`.cyan, JSON.stringify(args).gray);
-
-      const result = await executeTool(toolName, args);
-
-      messages.push({
-        role: 'tool',
-        content: JSON.stringify(result),
-      });
-
-      if (result.success) {
-        console.log(`[Tool result: success]`.green);
-      } else {
-        console.log(`[Tool retry: ${result.error}]`.yellow);
-      }
-    }
-
-    const followUp = await chatCompletion(
-      config.aiService,
-      messages,
-      config.aiVersion,
-      toolDefinitions
-    );
-
-    return processAIResponse(followUp, messages, config);
+/**
+ * Normalize a completion response into a common shape:
+ *   { content: string|null, toolCalls: Array|null, rawMessage: object }
+ *
+ * rawMessage is the provider-native message object to push onto the history.
+ */
+function normalizeResponse(aiService, response) {
+  if (aiService === 'ollama') {
+    const msg = response?.message;
+    return {
+      content: msg?.content || null,
+      toolCalls: msg?.tool_calls?.length ? msg.tool_calls.map(tc => ({
+        id: tc.id || tc.function?.name,
+        name: tc.function.name,
+        arguments: typeof tc.function.arguments === 'string'
+          ? JSON.parse(tc.function.arguments)
+          : tc.function.arguments,
+      })) : null,
+      rawMessage: msg,
+    };
   }
 
-  const content = response.message?.content || response;
-  return { content, messages };
+  // OpenAI and Mistral both use the choices[0].message shape
+  const msg = response?.choices?.[0]?.message;
+  return {
+    content: msg?.content || null,
+    toolCalls: msg?.tool_calls?.length ? msg.tool_calls.map(tc => ({
+      id: tc.id || tc.function?.name,
+      name: tc.function.name,
+      arguments: typeof tc.function.arguments === 'string'
+        ? JSON.parse(tc.function.arguments)
+        : tc.function.arguments,
+    })) : null,
+    rawMessage: msg,
+  };
+}
+
+/**
+ * Build a tool result message in the format each provider expects.
+ */
+function toolResultMessage(aiService, toolCallId, result) {
+  if (aiService === 'ollama') {
+    return { role: 'tool', content: JSON.stringify(result) };
+  }
+  // OpenAI / Mistral expect tool_call_id
+  return { role: 'tool', tool_call_id: toolCallId, content: JSON.stringify(result) };
+}
+
+/**
+ * Process a completion response, executing any tool calls in a loop
+ * until the model returns a final text response.
+ */
+async function processResponse(aiService, response, messages, model) {
+  const normalized = normalizeResponse(aiService, response);
+
+  if (!normalized.toolCalls) {
+    return { content: normalized.content || 'No response', messages };
+  }
+
+  // Push the assistant message with tool calls onto history
+  messages.push(normalized.rawMessage);
+
+  for (const tc of normalized.toolCalls) {
+    console.log(`[Tool: ${tc.name}]`.cyan, JSON.stringify(tc.arguments).gray);
+
+    const result = await executeTool(tc.name, tc.arguments);
+
+    messages.push(toolResultMessage(aiService, tc.id, result));
+
+    if (result.success) {
+      console.log(`[Tool result: success]`.green);
+    } else {
+      console.log(`[Tool retry: ${result.error}]`.yellow);
+    }
+  }
+
+  // Follow up with the model so it can use the tool results
+  const followUp = await chatCompletion(aiService, messages, model, toolDefinitions);
+  if (!followUp) {
+    return { content: 'Error: No response from AI after tool call.', messages };
+  }
+
+  return processResponse(aiService, followUp, messages, model);
 }
 
 async function main() {
@@ -141,16 +186,16 @@ async function main() {
       toolDefinitions
     );
 
-    let botMessage;
-    if (config.aiService === 'openai' || config.aiService === 'mistral') {
-      botMessage = completion?.choices?.[0]?.message?.content || 'No response';
-      messages.push({ role: 'assistant', content: botMessage });
-    } else if (config.aiService === 'ollama') {
-      const result = await processAIResponse(completion, messages, config);
-      botMessage = result.content;
-      messages = result.messages;
-      messages.push({ role: 'assistant', content: botMessage });
+    if (!completion) {
+      console.log('Error: No response from AI. Check your config and connection.'.red);
+      messages.pop(); // Remove the user message that got no response
+      continue;
     }
+
+    const result = await processResponse(config.aiService, completion, messages, config.aiVersion);
+    const botMessage = result.content;
+    messages = result.messages;
+    messages.push({ role: 'assistant', content: botMessage });
 
     console.log(`${config.aiVersion}`.bgGreen, botMessage.green);
     console.log('----------------'.bgGreen);
