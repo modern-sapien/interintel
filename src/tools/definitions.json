@@ -1,0 +1,144 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "Read the contents of a file at the specified path. Use this to examine source code, configuration files, or any text file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The relative or absolute path to the file to read"
+          }
+        },
+        "required": ["path"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_directory",
+      "description": "List files and folders in a directory. Use this to explore project structure and find relevant files.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The directory path to list. Defaults to current working directory if not specified."
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "If true, list contents recursively. Defaults to false."
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_directory",
+      "description": "Search for a text pattern across files in a directory. Returns matching files with line numbers and content. Use this to find where functions, variables, or strings are used.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "The text or regex pattern to search for"
+          },
+          "path": {
+            "type": "string",
+            "description": "Directory to search in. Defaults to current working directory."
+          },
+          "filePattern": {
+            "type": "string",
+            "description": "Glob pattern to filter files, e.g. '*.js' or '*.ts'. Defaults to all files."
+          }
+        },
+        "required": ["pattern"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "edit_file",
+      "description": "Edit an EXISTING file by replacing specific text. Use this for updates/modifications to files that already exist. Always use the full path from search results. Read the file first to ensure accurate matching.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The path to the file to edit"
+          },
+          "old_text": {
+            "type": "string",
+            "description": "The exact text to find and replace. Must match exactly including whitespace."
+          },
+          "new_text": {
+            "type": "string",
+            "description": "The text to replace it with"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "If true, preview the change without applying it. Defaults to false."
+          },
+          "replace_all": {
+            "type": "boolean",
+            "description": "If true, replace all occurrences of old_text in the file. Defaults to false (requires unique match)."
+          }
+        },
+        "required": ["path", "old_text", "new_text"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "write_file",
+      "description": "Create a NEW file. Use this only for creating files that don't exist. For modifying existing files, use edit_file instead. Always use full paths.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The path where the file should be created"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content to write to the file"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "If true, overwrite existing file. If false, fail if file exists. Defaults to false."
+          }
+        },
+        "required": ["path", "content"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "run_command",
+      "description": "Execute a shell command. Use this to run build tools, tests, git commands, etc. Requires user permission.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The command to execute"
+          },
+          "timeout": {
+            "type": "number",
+            "description": "Timeout in milliseconds. Defaults to 30000 (30 seconds)."
+          }
+        },
+        "required": ["command"]
+      }
+    }
+  }
+]

@@ -1,38 +1,133 @@
-## INTERINTEL
+# Interintel
 
-The application `interintel` is a command line interface (CLI) application implemented in Node.js. It essentially is an interactive communication tool between the user and an AI model, only GPTs for now.
+A CLI for local AI-assisted development. Chat with AI models running on your machine to read, search, edit files, and run commands—without sending your code to the cloud.
 
-Here's a brief overview of the main functionalities, as contained in the index.js file:
+## Features
 
-- The application starts an interactive session with the user. It does this by invoking the readline module, which reads user inputs line by line from the terminal.
+- **Local-first**: Works with Ollama for fully local AI (no data leaves your machine)
+- **Multi-provider**: Supports Ollama, OpenAI, and Mistral
+- **AI-driven tools**: AI can read files, search code, edit files, and run commands
+- **Permission system**: You control what the AI can do
+- **Fuzzy search**: Natural language queries find `chatCompletion`, `chat_completion`, etc.
 
--- 'node index.js' will start the app
-  
-- The OpenAI's API is accessed using API keys, and the version of AI being used is specified via a config. 
+## Requirements
 
-### //writeFile
-- If a user types '//writefile', the application prompts the user to provide a name for the file and then a prompt for the AI. It then automatically generates some text (by communicating with OpenAI's GPT-3 model), writes this to a file and stores it in the application's directory. 
-  
-### //readRefs
-- If a user writes '//readRefs', the application reads the content of the specified files in the interintel.config.js (in the current implementation) and uses this as part of the conversation with the AI.
-- So as you work on your project and files change or you move to other parts of the code base you can adjust where interintel points and what is referenced by AI conversation.
+- Node.js >= 18.0.0
+- [Ollama](https://ollama.ai/) (for local AI) with a tool-capable model:
+  - `llama3.1:8b` (recommended)
+  - `qwen2.5:7b`
+  - `gpt-oss:20b`
 
-### everything else
-- For all user inputs outside of these special keywords, the chat conversation is simply updated with the user's message and a call is made to the OpenAI API to generate the AI's response. This is then displayed on the console. 
+## Installation
 
-The application relies heavily on async-await pattern for handling the asynchronicity associated with reading user inputs and waiting for responses from the OpenAI 'aiChatCompletion' function. 
+```bash
+npm install interintel
+```
 
-Keep in mind that this is a high level overview and each functionality has its own level of implementation detail.
+Or clone and run locally:
+```bash
+git clone https://github.com/modern-sapien/inter-intel.git
+cd inter-intel
+npm install
+node index.js
+```
 
-File Structure
+## Configuration
 
-project/
-├── functions/
-│   ├── chat-functions.js
-│   ├── file-functions.js
-│   ├── openai-functions.js
-│   ├── messageUtils.js
-│   ├── writeFileHandler.js
-│   └── readRefsHandler.js
-├── interintel.config.js
-└── index.js
+After install, edit `interintel.config.js` in your project root:
+
+```javascript
+export default {
+  // 'ollama' | 'openai' | 'mistral'
+  aiService: 'ollama',
+
+  // Model name
+  aiVersion: 'llama3.1:8b',
+
+  // API key (only for OpenAI/Mistral)
+  apiKey: process.env.OPENAI_API_KEY || '',
+
+  // Files to load into context
+  filePaths: [],
+};
+```
+
+## Usage
+
+```bash
+interintel
+# or
+node index.js
+```
+
+Then chat naturally:
+```
+You: What files are in this project?
+You: Find where fetchUser is defined
+You: Update the version in package.json to 2.0.0
+You: Run npm test
+```
+
+## AI Tools
+
+The AI has access to these tools:
+
+| Tool | Description | Permission |
+|------|-------------|------------|
+| `read_file` | Read file contents | Allowed |
+| `list_directory` | List files/folders | Allowed |
+| `search_directory` | Search code with fuzzy matching | Allowed |
+| `edit_file` | Modify existing files | Requires permission |
+| `write_file` | Create new files | Requires permission |
+| `run_command` | Execute shell commands | Requires permission |
+
+## Permissions
+
+Write and execute operations require your approval:
+
+```
+AI wants to write: src/index.js
+[y]es (once) / [n]o / [a]lways (save) / [g]lobal (trust all writes):
+```
+
+- `y` - Allow once (session only)
+- `n` - Deny
+- `a` - Always allow this directory (saved)
+- `g` - Trust all write operations (saved)
+
+View permissions with `//permissions`. Settings saved in `interintel.permissions.json`.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `//permissions` | Show current permission settings |
+| `//readrefs` | Load reference files from config |
+| `//writefile` | AI-assisted file creation |
+| `exit` | Quit interintel |
+
+## File Structure
+
+```
+interintel/
+├── index.js                # Entry point
+├── setup.js                # Postinstall setup
+├── src/
+│   ├── cli.js              # Main CLI loop
+│   ├── providers.js        # AI service interface (Ollama/OpenAI/Mistral)
+│   ├── tools/
+│   │   ├── definitions.json
+│   │   ├── executors.js
+│   │   ├── index.js
+│   │   └── permissions.js
+│   └── utils/
+│       ├── chat.js         # Readline helpers
+│       ├── files.js        # File operations
+│       └── writeFileHandler.js
+└── templates/
+    └── config.js           # Config template
+```
+
+## License
+
+Apache-2.0

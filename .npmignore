@@ -1,0 +1,20 @@
+# Dev files
+.claude/
+.git/
+.gitignore
+FOR_REVIEW.md
+INSTRUCTIONS.md
+
+# Test/example files
+testIntel.js
+mistral.js
+
+# Generated files
+summary.txt
+dotenv-imports.txt
+test.txt
+*.tgz
+
+# System
+.DS_Store
+node_modules/

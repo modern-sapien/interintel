@@ -1,6 +1,12 @@
 .DS_Store
 interintel/session-samples
 resources/multi-step
+.claude
+.interintel
+
+FOR_REVIEW.md
+INSTRUCTIONS.md
+
 # Logs
 logs
 *.log
